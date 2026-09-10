@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f7fb;
+  --foreground: #10172a;
+  --surface: #ffffff;
+  --muted: #64748b;
+  --line: #e4eaf3;
+  --primary: #0b63f6;
+  --primary-dark: #004bd8;
+  --sidebar: #00162f;
+  --sidebar-deep: #000d20;
+  --success: #08a76b;
+  --warning: #f79009;
+  --danger: #e5484d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--background);
+}
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-size: 16px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+::selection {
+  background: #b8d4ff;
+  color: #06204c;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin 0.9s linear infinite;
+}

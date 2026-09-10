@@ -1,0 +1,147 @@
+tech-trolley-backend/
+├── src/
+│   ├── main.ts
+│   ├── app.module.ts
+│   ├── app.controller.ts
+│   ├── app.service.ts
+│   │
+│   ├── auth/                              ← Member 1(Mumitur)
+│   │   ├── auth.module.ts
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   ├── jwtStrategy.ts
+│   │   ├── jwtGuard.ts
+│   │   ├── roles.decorator.ts
+│   │   ├── user-role.enum.ts
+│   │   ├── roles/
+│   │   │   └── roles.guard.ts
+│   │   └── dtos/
+│   │       └── login.dto.ts
+│   │
+│   ├── users/                             ← Member 1(Mumitur)
+│   │   ├── users.module.ts
+│   │   ├── users.controller.ts
+│   │   ├── users.service.ts
+│   │   ├── users.entity.ts
+│   │   └── dtos/
+│   │       ├── create-user.dto.ts
+│   │       ├── update-user.dto.ts
+│   │       └── update-user-status.dto.ts
+│   │
+│   ├── shop/                              ← Member 1(Mumitur)
+│   │   ├── shop.module.ts
+│   │   ├── shop.controller.ts
+│   │   ├── shop.service.ts
+│   │   ├── shop.entity.ts
+│   │   └── dtos/
+│   │       └── update-shop.dto.ts
+│   │
+│   ├── brands/                            ← Member 2(Asad)
+│   │   ├── brands.module.ts
+│   │   ├── brands.controller.ts
+│   │   ├── brands.service.ts
+│   │   ├── brands.entity.ts
+│   │   └── dtos/
+│   │       ├── create-brand.dto.ts
+│   │       └── update-brand.dto.ts
+│   │
+│   ├── categories/                        ← Member 2(Asad)
+│   │   ├── categories.module.ts
+│   │   ├── categories.controller.ts
+│   │   ├── categories.service.ts
+│   │   ├── categories.entity.ts
+│   │   └── dtos/
+│   │       ├── create-category.dto.ts
+│   │       └── update-category.dto.ts
+│   │
+│   ├── products/                          ← Member 2(Asad)
+│   │   ├── products.module.ts
+│   │   ├── products.controller.ts
+│   │   ├── products.service.ts
+│   │   ├── products.entity.ts
+│   │   ├── product-variants.entity.ts
+│   │   └── dtos/
+│   │       ├── create-product.dto.ts
+│   │       ├── update-product.dto.ts
+│   │       ├── update-product-status.dto.ts
+│   │       └── create-variant.dto.ts
+│   │
+│   ├── inventory/                         ← Member 2(Asad)
+│   │   ├── inventory.module.ts
+│   │   ├── inventory.controller.ts
+│   │   ├── inventory.service.ts
+│   │   └── inventory-units.entity.ts
+│   │
+│   ├── suppliers/                         ← Member 3(Taki)
+│   │   ├── suppliers.module.ts
+│   │   ├── suppliers.controller.ts
+│   │   ├── suppliers.service.ts
+│   │   ├── suppliers.entity.ts
+│   │   └── dtos/
+│   │       ├── create-supplier.dto.ts
+│   │       └── update-supplier.dto.ts
+│   │
+│   ├── purchases/                         ← Member 3(Taki)
+│   │   ├── purchases.module.ts
+│   │   ├── purchases.controller.ts
+│   │   ├── purchases.service.ts
+│   │   ├── purchases.entity.ts
+│   │   ├── purchase-items.entity.ts
+│   │   ├── purchase-payments.entity.ts
+│   │   └── dtos/
+│   │       ├── create-purchase.dto.ts
+│   │       └── create-purchase-payment.dto.ts
+│   │
+│   ├── customers/                         ← Member 4(Razon)
+│   │   ├── customers.module.ts
+│   │   ├── customers.controller.ts
+│   │   ├── customers.service.ts
+│   │   ├── customers.entity.ts
+│   │   └── dtos/
+│   │       ├── create-customer.dto.ts
+│   │       └── update-customer.dto.ts
+│   │
+│   ├── sales/                             ← Member 4(Razon)
+│   │   ├── sales.module.ts
+│   │   ├── sales.controller.ts
+│   │   ├── sales.service.ts
+│   │   ├── sales.entity.ts
+│   │   ├── sale-items.entity.ts
+│   │   ├── sales-payments.entity.ts
+│   │   └── dtos/
+│   │       ├── create-sale.dto.ts
+│   │       └── create-sales-payment.dto.ts
+│   │
+│   ├── financial-accounts/                ← Member 4(Razon)
+│   │   ├── financial-accounts.module.ts
+│   │   ├── financial-accounts.service.ts
+│   │   ├── financial-accounts.entity.ts
+│   │   └── account-transactions.entity.ts
+│   │
+│   ├── expenses/                          ← Member 4(Razon)
+│   │   ├── expenses.module.ts
+│   │   ├── expenses.service.ts
+│   │   ├── expenses.entity.ts
+│   │   └── dtos/
+│   │       └── create-expense.dto.ts
+│   │
+│   ├── reports/                           ← Member 4(Razon)
+│   │   ├── reports.module.ts
+│   │   ├── reports.controller.ts
+│   │   └── reports.service.ts
+│   │
+│   └── seeds/                             ← Member All of later
+│       └── seed.ts
+│
+├── test/
+│   ├── app.e2e-spec.ts
+│   └── jest-e2e.json
+├── .env                                   ← NEVER commit
+├── .env.example                           ← commit this template
+├── .gitignore
+├── .prettierrc
+├── eslint.config.mjs
+├── nest-cli.json
+├── tsconfig.json
+├── tsconfig.build.json
+└── package.json
