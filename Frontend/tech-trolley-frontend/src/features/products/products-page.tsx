@@ -146,7 +146,7 @@ export function ProductsPage() {
     <div>
       <PageHeader
         title="Products"
-        description="Manage the complete product catalog and its inventory tracking behavior."
+        description="Manage products, track inventory, and monitor availability in one place."
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

@@ -59,7 +59,7 @@ export function ReportsPage() {
       <div>
         <PageHeader
           title="Reports"
-          description="Business performance from the backend dashboard totals and sales chart endpoints."
+          description="Review sales, purchases, expenses, customers, and overall business performance."
           eyebrow="Live reporting"
         />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
@@ -98,7 +98,7 @@ export function ReportsPage() {
             <div>
               <h2 className="font-bold text-slate-900">Sales by date</h2>
               <p className="mt-1 text-sm text-slate-500">
-                The backend currently returns up to 30 grouped dates.
+                View sales totals grouped by date for the latest available records.
               </p>
             </div>
             <div
@@ -161,9 +161,7 @@ export function ReportsPage() {
         <Card className="mt-4 flex items-start gap-3 border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
           <BarChart3 className="mt-0.5 h-5 w-5 shrink-0" />
           <p>
-            <strong>Report scope:</strong> The current backend supports
-            aggregate dashboard totals and sales grouped by date. Unsupported
-            profit, return, or stock-history reports are not fabricated.
+            <strong>Report scope:</strong> View overall business totals and sales grouped by date. Profit, returns, and stock history reports are currently unavailable.
           </p>
         </Card>
       </div>

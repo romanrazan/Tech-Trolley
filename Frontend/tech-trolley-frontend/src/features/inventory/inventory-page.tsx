@@ -143,7 +143,7 @@ export function InventoryPage() {
     <div>
       <PageHeader
         title="Inventory"
-        description="Live aggregate inventory totals and serialized device lookup from the backend."
+        description="Monitor stock levels, sold units, and serialized devices in one place."
       />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -168,7 +168,7 @@ export function InventoryPage() {
         <Card className="p-5">
           <h2 className="font-bold text-slate-900">Inventory overview</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Direct values from the inventory stock endpoint
+            View current stock levels and sold units at a glance.
           </p>
           <div className="mt-6 space-y-5">
             {chart.map((item) => (

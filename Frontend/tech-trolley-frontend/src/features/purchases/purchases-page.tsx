@@ -482,7 +482,7 @@ export function PurchasesPage() {
       <div>
         <PageHeader
           title="Purchases"
-          description="Purchases receive inventory when created; payment status and supplier activation are managed by the backend."
+          description="Create and manage purchases, receive inventory, and track payment status."
           actions={
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />

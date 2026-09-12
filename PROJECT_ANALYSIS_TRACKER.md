@@ -18,8 +18,7 @@ E:\web_project
 │   ├── Final-Project-Details-Backend 1.docx
 │   ├── Tech_Trolley_API_Final_Testing_Report.docx
 │   ├── tech-trolley-Folder_and_File_structure (1).txt
-│   └── Tech_Trolley_Final
-│       └── Tech_Trolley_Final
+│   └── tech-trolley-backend
 │           ├── src
 │           ├── test
 │           ├── dist

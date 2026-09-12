@@ -191,10 +191,11 @@ export function ContactsPage({ kind }: { kind: "customers" | "suppliers" }) {
       <PageHeader
         title={title}
         description={
-          isCustomer
-            ? "Manage customer details and backend-calculated outstanding dues."
-            : "Manage purchasing partners and monitor backend-calculated supplier dues."
-        }
+           isCustomer
+           ? "Manage customer details and track outstanding balances."
+           : "Manage supplier details and track outstanding balances."
+          }
+
       />
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <StatCard

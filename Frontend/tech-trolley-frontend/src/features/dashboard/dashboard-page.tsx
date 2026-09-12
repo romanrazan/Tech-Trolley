@@ -150,7 +150,7 @@ export function DashboardPage() {
       color: "#07a2c4",
     },
     { name: "Sold units", value: inventory.soldUnits, color: "#08a76b" },
-    { name: "Damaged units", value: inventory.damagedUnits, color: "#f79009" },
+    //{ name: "Damaged units", value: inventory.damagedUnits, color: "#f79009" },
   ];
 
   return (
@@ -340,43 +340,8 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {!salesperson && (
-        <Card className="mt-4 p-5">
-          <h2 className="font-bold text-slate-900">
-            {user?.role === "OWNER"
-              ? "Owner capabilities"
-              : "Manager capabilities"}
-          </h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { icon: Package, text: "Manage catalog" },
-              { icon: Truck, text: "Manage suppliers" },
-              { icon: ShoppingBag, text: "Manage purchases" },
-              { icon: ReceiptText, text: "Manage expenses" },
-              { icon: ShoppingCart, text: "Sales and payments" },
-              { icon: WalletCards, text: "Financial accounts" },
-              { icon: BarChart3, text: "View reports" },
-              {
-                icon: Store,
-                text:
-                  user?.role === "OWNER"
-                    ? "Update shop settings"
-                    : "View shop settings",
-              },
-            ].map(({ icon: Icon, text }) => (
-              <div
-                key={text}
-                className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-700"
-              >
-                <span className="rounded-lg bg-blue-50 p-2 text-blue-600">
-                  <Icon className="h-4 w-4" />
-                </span>
-                {text}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+
+
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[.75fr_1.45fr]">
         <Card className="p-5">
@@ -461,6 +426,49 @@ export function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* Capabilities Card: Owner & Manager */}
+      {/*
+        <Card className="mt-4 p-5">
+          <h2 className="font-bold text-slate-900">
+            {user?.role === "OWNER"
+              ? "Owner capabilities"
+              : "Manager capabilities"}
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: Package, text: "Manage catalog" },
+              { icon: Truck, text: "Manage suppliers" },
+              { icon: ShoppingBag, text: "Manage purchases" },
+              { icon: ReceiptText, text: "Manage expenses" },
+              { icon: ShoppingCart, text: "Sales and payments" },
+              { icon: WalletCards, text: "Financial accounts" },
+              { icon: BarChart3, text: "View reports" },
+              {
+                icon: Store,
+                text:
+                  user?.role === "OWNER"
+                    ? "Update shop settings"
+                    : "View shop settings",
+              },
+            ].map(({ icon: Icon, text }) => (
+              <div
+                key={text}
+                className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-700"
+              >
+                <span className="rounded-lg bg-blue-50 p-2 text-blue-600">
+                  <Icon className="h-4 w-4" />
+                </span>
+                {text}
+              </div>
+            ))}
+          </div>
+        </Card>
+        
+      )}
+      
+       */}
     </div>
+    
   );
 }

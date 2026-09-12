@@ -156,7 +156,7 @@ export function ExpensesPage() {
       if (editing) await expensesService.update(editing.id, values);
       else await expensesService.create(values);
       toast.success(
-        `Expense ${editing ? "updated" : "created"}; account balance was adjusted by the backend.`,
+        `Expense ${editing ? "updated" : "created"}; account balance was adjusted.`,
       );
       setModalOpen(false);
       resource.reload();
@@ -184,7 +184,7 @@ export function ExpensesPage() {
       <div>
         <PageHeader
           title="Expenses"
-          description="Track operating costs. Every mutation adjusts the selected account atomically in the backend."
+          description="Record business expenses, track spending, and monitor account balances."
           actions={
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />

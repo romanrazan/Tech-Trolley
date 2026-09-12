@@ -118,7 +118,7 @@ export function AccountsPage() {
       <div>
         <PageHeader
           title="Accounts"
-          description="Manage cash, bank and mobile wallet accounts used for business inflows and outflows."
+          description="Manage business accounts, track balances, and monitor account activity."
           actions={
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
@@ -126,7 +126,8 @@ export function AccountsPage() {
             </Button>
           }
         />
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        {/* <div className="mb-4 grid gap-3 sm:grid-cols-3"> */}
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr]">
           <StatCard
             label="Total balance"
             value={formatMoney(total)}

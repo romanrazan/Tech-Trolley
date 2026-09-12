@@ -101,7 +101,7 @@ export function SimpleCatalogPage({ kind }: { kind: "brands" | "categories" }) {
     <div>
       <PageHeader
         title={title}
-        description={`${title} structure the product catalog. Reads are available to every signed-in role.`}
+        description={`${title} help organize and manage the product catalog.`}
         actions={
           canWrite ? (
             <Button onClick={openCreate}>

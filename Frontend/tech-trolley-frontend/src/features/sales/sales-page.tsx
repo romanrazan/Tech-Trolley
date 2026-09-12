@@ -441,7 +441,7 @@ export function SalesPage() {
     <div>
       <PageHeader
         title="Sales"
-        description="New sales start in progress and issue stock immediately. Payment status is calculated by the backend."
+        description="Create and manage sales, track payment status, and view completed transactions."
         actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
@@ -557,7 +557,7 @@ export function SalesPage() {
         open={createOpen}
         wide
         title="New sale"
-        description="Serialized IMEIs are checked before the sale is sent to the backend."
+        description="Selected products are verified before the sale is created."
         onClose={() => setCreateOpen(false)}
         footer={
           <>
@@ -685,8 +685,8 @@ export function SalesPage() {
                   setDiscount(Number(event.target.value) || 0)
                 }
                 type="number"
-                min="0"
-                step="0.01"
+                min=""
+                step="1"
               />
             </Field>
             <Field label="VAT">
@@ -695,7 +695,7 @@ export function SalesPage() {
                 onChange={(event) => setVat(Number(event.target.value) || 0)}
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
               />
             </Field>
           </div>
