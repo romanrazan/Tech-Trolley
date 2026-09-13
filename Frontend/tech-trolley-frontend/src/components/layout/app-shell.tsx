@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Bell,
   ChevronDown,
   LogOut,
   Menu,
@@ -180,13 +179,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-label="Search navigation"
           />
         </form>
-        <button
-          className="hidden rounded-lg p-2 text-slate-500 hover:bg-slate-100 sm:block"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
-        <div className="relative">
+        <div className="relative ml-auto shrink-0">
           <button
             onClick={() => setProfileOpen((value) => !value)}
             className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-slate-50"
