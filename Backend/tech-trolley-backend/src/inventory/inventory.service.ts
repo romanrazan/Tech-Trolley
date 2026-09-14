@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import { Product } from '../products/entities/products.entity';
 import { SaleItem } from '../sales/entities/sale-item.entity';
+import { SaleStatus } from '../sales/entities/sale.entity';
 import {
   InventoryStatus,
   InventoryUnit,
@@ -380,8 +381,8 @@ export class InventoryService {
           END), 0)`,
           'soldUnits',
         )
-        .where('sale.status::text NOT IN (:...excludedSaleStatuses)', {
-          excludedSaleStatuses: ['RETURNED', 'CANCELLED', 'FAILED'],
+        .where('sale.status = :completedStatus', {
+          completedStatus: SaleStatus.COMPLETED,
         })
         .andWhere('item.quantity > 0')
         .getRawOne<{ soldUnits: string | number }>(),

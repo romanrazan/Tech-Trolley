@@ -1,6 +1,7 @@
 import { EntityManager, Repository } from 'typeorm';
 import { Product } from '../products/entities/products.entity';
 import { SaleItem } from '../sales/entities/sale-item.entity';
+import { SaleStatus } from '../sales/entities/sale.entity';
 import {
   InventoryStatus,
   InventoryUnit,
@@ -94,7 +95,7 @@ describe('InventoryService product quantity', () => {
     await expect(service.checkStock()).resolves.toMatchObject({ soldUnits: 5 });
   });
 
-  it('sums sale item quantities without counting payment or status rows', async () => {
+  it('sums only completed sale item quantities without counting payment rows', async () => {
     const { service, soldQueryBuilder, createSoldQueryBuilder } = setup(
       quantityProduct(),
       { soldUnits: '9' },
@@ -112,9 +113,9 @@ describe('InventoryService product quantity', () => {
       'soldUnits',
     );
     expect(soldQueryBuilder.where).toHaveBeenCalledWith(
-      'sale.status::text NOT IN (:...excludedSaleStatuses)',
+      'sale.status = :completedStatus',
       {
-        excludedSaleStatuses: ['RETURNED', 'CANCELLED', 'FAILED'],
+        completedStatus: SaleStatus.COMPLETED,
       },
     );
   });

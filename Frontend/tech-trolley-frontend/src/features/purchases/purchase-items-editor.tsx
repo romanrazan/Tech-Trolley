@@ -117,12 +117,6 @@ export function PurchaseItemsEditor({
         </Button>
       </div>
 
-      {disabled && (
-        <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Complete the Supplier information before adding Product items.
-        </p>
-      )}
-
       <div className="space-y-3">
         {items.map((item, index) => {
           const product = activeProducts.find(
