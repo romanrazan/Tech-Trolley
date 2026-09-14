@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateSupplierDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
 class CreateSupplierDto {
     name;
@@ -21,25 +22,29 @@ class CreateSupplierDto {
 exports.CreateSupplierDto = CreateSupplierDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Global Mobile Distributors' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Supplier name is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Supplier name is required.' }),
     __metadata("design:type", String)
 ], CreateSupplierDto.prototype, "name", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: '+8801711223344' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Supplier phone is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Supplier phone is required.' }),
     __metadata("design:type", String)
 ], CreateSupplierDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'sales@globalmobile.com' }),
-    (0, class_validator_1.IsEmail)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsEmail)({}, { message: 'Enter a valid supplier email address.' }),
     __metadata("design:type", String)
 ], CreateSupplierDto.prototype, "email", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Motijheel, Dhaka' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Supplier address is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Supplier address is required.' }),
     __metadata("design:type", String)
 ], CreateSupplierDto.prototype, "address", void 0);
 //# sourceMappingURL=create-supplier.dto.js.map

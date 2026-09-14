@@ -102,7 +102,10 @@ export const accountSchema = z.object({
   name: requiredText("Account name"),
   type: requiredText("Account type"),
   accountNumber: optionalText,
-  balance: z.number().optional(),
+  balance: z
+    .number({ error: "Opening balance must be a valid number." })
+    .min(0, "Opening balance cannot be negative.")
+    .optional(),
 });
 export const accountUpdateSchema = z.object({
   name: requiredText("Account name"),
@@ -112,23 +115,30 @@ export const accountUpdateSchema = z.object({
 });
 export const expenseSchema = z.object({
   category: requiredText("Category"),
-  amount: z.number().positive("Amount must be positive."),
+  amount: z
+    .number({ error: "Amount is required." })
+    .positive("Amount must be positive."),
   accountId: uuid("Account"),
   date,
   remarks: optionalText,
 });
 export const transactionItemSchema = z.object({
   productId: uuid("Product"),
-  quantity: z.number().int().positive("Quantity must be at least 1."),
-  unitPrice: z.number().positive("Unit price must be positive."),
+  quantity: z
+    .number({ error: "Quantity is required." })
+    .int("Quantity must be a whole number.")
+    .positive("Quantity must be at least 1."),
+  unitPrice: z
+    .number({ error: "Unit price is required." })
+    .positive("Unit price must be positive."),
   imeis: z.array(z.string().trim().min(1)).optional(),
 });
 const purchaseQuantitySchema = z
-  .number()
+  .number({ error: "Quantity is required." })
   .int("Quantity must be a whole number.")
   .positive("Quantity must be at least 1.");
 const purchaseUnitPriceSchema = z
-  .number()
+  .number({ error: "Unit price is required." })
   .positive("Unit price must be greater than 0.")
   .refine(
     (value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8,
@@ -208,8 +218,12 @@ export const purchaseSchema = z.union([
 const saleBaseSchema = z.object({
   invoiceNumber: requiredText("Invoice number"),
   date,
-  discount: z.number().min(0, "Discount cannot be negative."),
-  vat: z.number().min(0, "VAT cannot be negative."),
+  discount: z
+    .number({ error: "Discount must be a valid number." })
+    .min(0, "Discount cannot be negative."),
+  vat: z
+    .number({ error: "VAT must be a valid number." })
+    .min(0, "VAT cannot be negative."),
   items: z.array(transactionItemSchema).min(1, "Add at least one item."),
 });
 export const saleSchema = z
@@ -239,7 +253,7 @@ export const saleSchema = z
   );
 export const paymentSchema = z.object({
   amount: z
-    .number()
+    .number({ error: "Amount is required." })
     .positive("Amount must be positive.")
     .refine(
       (value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8,

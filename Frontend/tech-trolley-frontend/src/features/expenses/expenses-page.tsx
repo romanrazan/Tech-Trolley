@@ -84,14 +84,17 @@ export function ExpensesPage() {
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       category: "",
-      amount: 0,
+      amount: undefined,
       accountId: "",
       date: today(),
       remarks: "",
     },
   });
   const accountNames = useMemo(
-    () => new Map(resource.data.accounts.map((account) => [account.id, account.name])),
+    () =>
+      new Map(
+        resource.data.accounts.map((account) => [account.id, account.name]),
+      ),
     [resource.data.accounts],
   );
   const filtered = useMemo(
@@ -132,7 +135,7 @@ export function ExpensesPage() {
     setEditing(null);
     form.reset({
       category: "",
-      amount: 0,
+      amount: undefined,
       accountId:
         resource.data.accounts.find((account) => account.isActive)?.id ?? "",
       date: today(),
@@ -390,7 +393,10 @@ export function ExpensesPage() {
             </Field>
             <Field label="Amount" error={form.formState.errors.amount?.message}>
               <Input
-                {...form.register("amount", { valueAsNumber: true })}
+                {...form.register("amount", {
+                  setValueAs: (value: string) =>
+                    value === "" ? Number.NaN : Number(value),
+                })}
                 type="number"
                 min="0.01"
                 step="0.01"

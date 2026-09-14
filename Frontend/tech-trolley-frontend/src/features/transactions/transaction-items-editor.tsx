@@ -8,7 +8,7 @@ import { formatMoney } from "@/utils/format";
 export interface DraftItem {
   key: string;
   productId: string;
-  quantity: number;
+  quantity: number | "";
   unitPrice: number | "";
   imeisText: string;
 }
@@ -25,11 +25,15 @@ export function TransactionItemsEditor({
   items,
   onChange,
   enforceAvailableStock = false,
+  fieldErrors = {},
+  onClearFieldError,
 }: {
   products: Product[];
   items: DraftItem[];
   onChange: (items: DraftItem[]) => void;
   enforceAvailableStock?: boolean;
+  fieldErrors?: Record<string, string>;
+  onClearFieldError?: (fieldId: string) => void;
 }) {
   function update(key: string, patch: Partial<DraftItem>) {
     onChange(
@@ -66,6 +70,12 @@ export function TransactionItemsEditor({
         {items.map((item, index) => {
           const product = products.find((entry) => entry.id === item.productId);
           const serialized = product?.trackingType === "SERIALIZED";
+          const productFieldId = `sale-item-${item.key}-product`;
+          const quantityFieldId = `sale-item-${item.key}-quantity`;
+          const unitPriceFieldId = `sale-item-${item.key}-unit-price`;
+          const imeisFieldId = `sale-item-${item.key}-imeis`;
+          const quantity =
+            typeof item.quantity === "number" ? item.quantity : 0;
           return (
             <Card key={item.key} className="p-4">
               <div className="mb-3 flex items-center justify-between">
@@ -86,11 +96,14 @@ export function TransactionItemsEditor({
                 </Button>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Product">
+                <Field label="Product" error={fieldErrors[productFieldId]}>
                   <Select
+                    id={productFieldId}
+                    aria-invalid={Boolean(fieldErrors[productFieldId])}
                     value={item.productId}
                     onChange={(event) => {
                       const id = event.target.value;
+                      onClearFieldError?.(productFieldId);
                       update(item.key, {
                         productId: id,
                         unitPrice: "",
@@ -126,14 +139,21 @@ export function TransactionItemsEditor({
                       ? `${product.quantity} currently available`
                       : undefined
                   }
+                  error={fieldErrors[quantityFieldId]}
                 >
                   <Input
+                    id={quantityFieldId}
+                    aria-invalid={Boolean(fieldErrors[quantityFieldId])}
                     value={item.quantity}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      onClearFieldError?.(quantityFieldId);
                       update(item.key, {
-                        quantity: Math.max(1, Number(event.target.value) || 1),
-                      })
-                    }
+                        quantity:
+                          event.target.value === ""
+                            ? ""
+                            : Number(event.target.value),
+                      });
+                    }}
                     type="number"
                     min="1"
                     max={
@@ -144,11 +164,14 @@ export function TransactionItemsEditor({
                     step="1"
                   />
                 </Field>
-                <Field label="Unit price">
+                <Field label="Unit price" error={fieldErrors[unitPriceFieldId]}>
                   <Input
+                    id={unitPriceFieldId}
+                    aria-invalid={Boolean(fieldErrors[unitPriceFieldId])}
                     value={item.unitPrice}
                     onChange={(event) => {
                       const value = event.target.value;
+                      onClearFieldError?.(unitPriceFieldId);
                       update(item.key, {
                         unitPrice: value === "" ? "" : Number(value),
                       });
@@ -161,14 +184,18 @@ export function TransactionItemsEditor({
                 {serialized && (
                   <div className="sm:col-span-3">
                     <Field
-                      label={`IMEIs (${parseImeis(item.imeisText).length}/${item.quantity})`}
+                      label={`IMEIs (${parseImeis(item.imeisText).length}/${quantity})`}
                       hint="Enter one per line or separate with commas."
+                      error={fieldErrors[imeisFieldId]}
                     >
                       <Textarea
+                        id={imeisFieldId}
+                        aria-invalid={Boolean(fieldErrors[imeisFieldId])}
                         value={item.imeisText}
-                        onChange={(event) =>
-                          update(item.key, { imeisText: event.target.value })
-                        }
+                        onChange={(event) => {
+                          onClearFieldError?.(imeisFieldId);
+                          update(item.key, { imeisText: event.target.value });
+                        }}
                         rows={3}
                         placeholder="356938035643809"
                       />
@@ -180,7 +207,7 @@ export function TransactionItemsEditor({
                 Line total:{" "}
                 <strong className="text-slate-900">
                   {formatMoney(
-                    item.quantity *
+                    quantity *
                       (typeof item.unitPrice === "number" ? item.unitPrice : 0),
                   )}
                 </strong>

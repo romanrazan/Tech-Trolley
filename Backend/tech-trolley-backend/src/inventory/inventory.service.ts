@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
 import { Product } from '../products/entities/products.entity';
+import { SaleItem } from '../sales/entities/sale-item.entity';
 import {
   InventoryStatus,
   InventoryUnit,
@@ -367,7 +368,25 @@ export class InventoryService {
   }
 
   async checkStock() {
-    const units = await this.inventoryRepository.find();
+    const [units, soldSummary] = await Promise.all([
+      this.inventoryRepository.find(),
+      this.inventoryRepository.manager
+        .createQueryBuilder(SaleItem, 'item')
+        .innerJoin('item.sale', 'sale')
+        .select(
+          `COALESCE(SUM(CASE
+            WHEN item.imeis IS NOT NULL THEN jsonb_array_length(item.imeis)
+            ELSE item.quantity
+          END), 0)`,
+          'soldUnits',
+        )
+        .where('sale.status::text NOT IN (:...excludedSaleStatuses)', {
+          excludedSaleStatuses: ['RETURNED', 'CANCELLED', 'FAILED'],
+        })
+        .andWhere('item.quantity > 0')
+        .getRawOne<{ soldUnits: string | number }>(),
+    ]);
+
     return {
       serializedInStock: units.filter(
         (unit) => unit.imei && unit.status === InventoryStatus.IN_STOCK,
@@ -377,8 +396,7 @@ export class InventoryService {
           (unit) => !unit.imei && unit.status === InventoryStatus.IN_STOCK,
         )
         .reduce((total, unit) => total + unit.quantity, 0),
-      soldUnits: units.filter((unit) => unit.status === InventoryStatus.SOLD)
-        .length,
+      soldUnits: Number(soldSummary?.soldUnits ?? 0),
       damagedUnits: units.filter(
         (unit) => unit.status === InventoryStatus.DAMAGED,
       ).length,

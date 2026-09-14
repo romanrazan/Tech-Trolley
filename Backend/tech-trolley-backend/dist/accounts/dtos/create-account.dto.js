@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateAccountDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
 class CreateAccountDto {
     name;
@@ -21,14 +22,16 @@ class CreateAccountDto {
 exports.CreateAccountDto = CreateAccountDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Main Cash Drawer' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Account name is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Account name is required.' }),
     __metadata("design:type", String)
 ], CreateAccountDto.prototype, "name", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Cash' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Account type is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Account type is required.' }),
     __metadata("design:type", String)
 ], CreateAccountDto.prototype, "type", void 0);
 __decorate([
@@ -41,6 +44,7 @@ __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 50000 }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0, { message: 'Opening balance cannot be negative.' }),
     __metadata("design:type", Number)
 ], CreateAccountDto.prototype, "balance", void 0);
 //# sourceMappingURL=create-account.dto.js.map

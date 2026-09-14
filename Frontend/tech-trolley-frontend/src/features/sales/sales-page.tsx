@@ -18,7 +18,12 @@ import { customersService } from "@/services/customers";
 import { productsService } from "@/services/products";
 import { accountsService } from "@/services/accounts";
 import { inventoryService } from "@/services/inventory";
-import { paymentSchema, saleSchema, type PaymentFormValues } from "@/schemas";
+import {
+  customerSchema,
+  paymentSchema,
+  saleSchema,
+  type PaymentFormValues,
+} from "@/schemas";
 import { useApiData } from "@/hooks/use-api-data";
 import { useAuth } from "@/contexts/auth-context";
 import { getApiErrorMessage } from "@/lib/api/client";
@@ -87,6 +92,18 @@ const draftItem = (key = crypto.randomUUID()): DraftItem => ({
   unitPrice: "",
   imeisText: "",
 });
+type NumericDraft = number | "";
+type SaleFieldErrors = Record<string, string>;
+
+function focusFirstInvalidField(errors: SaleFieldErrors) {
+  const firstFieldId = Object.keys(errors)[0];
+  if (!firstFieldId) return;
+  requestAnimationFrame(() => {
+    const field = document.getElementById(firstFieldId);
+    field?.scrollIntoView({ behavior: "smooth", block: "center" });
+    field?.focus({ preventScroll: true });
+  });
+}
 
 function saleStatusTone(status: Sale["status"]) {
   if (status === "COMPLETED") return "success" as const;
@@ -136,9 +153,10 @@ export function SalesPage() {
     address: "",
   });
   const [date, setDate] = useState(today());
-  const [discount, setDiscount] = useState(0);
-  const [vat, setVat] = useState(0);
+  const [discount, setDiscount] = useState<NumericDraft>("");
+  const [vat, setVat] = useState<NumericDraft>("");
   const [items, setItems] = useState<DraftItem[]>([draftItem("item-1")]);
+  const [fieldErrors, setFieldErrors] = useState<SaleFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<SaleDetail | null>(null);
@@ -166,10 +184,10 @@ export function SalesPage() {
   );
   const filtered = useMemo(() => {
     const matching = resource.data.sales.filter((sale) =>
-        `${sale.invoiceNumber} ${customerNames.get(sale.customerId) ?? sale.customer?.name ?? ""} ${sale.status}`
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      );
+      `${sale.invoiceNumber} ${customerNames.get(sale.customerId) ?? sale.customer?.name ?? ""} ${sale.status}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    );
     return sortSalesByPriority(matching);
   }, [resource.data.sales, search, customerNames]);
   const pages = Math.max(1, Math.ceil(filtered.length / 10));
@@ -214,96 +232,188 @@ export function SalesPage() {
     setCustomerId("");
     setNewCustomer({ name: "", phone: "", email: "", address: "" });
     setDate(today());
-    setDiscount(0);
-    setVat(0);
+    setDiscount("");
+    setVat("");
     setItems([draftItem()]);
+    setFieldErrors({});
     setFormError(null);
   }
   function openCreate() {
     resetCreate();
     setCreateOpen(true);
   }
+  function clearFieldError(fieldId: string) {
+    setFieldErrors((current) => {
+      if (!current[fieldId]) return current;
+      const next = { ...current };
+      delete next[fieldId];
+      return next;
+    });
+  }
   async function createSale(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
-    const parsedItems = items.map((item) => {
-      const product = resource.data.products.find(
-        (entry) => entry.id === item.productId,
-      );
-      const imeis = parseImeis(item.imeisText);
-      return {
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice:
-          typeof item.unitPrice === "number" ? item.unitPrice : Number.NaN,
-        ...(product?.trackingType === "SERIALIZED" ? { imeis } : {}),
-      };
-    });
-    const allImeis: string[] = [];
+    const errors: SaleFieldErrors = {};
+    const addError = (fieldId: string, message: string) => {
+      errors[fieldId] ??= message;
+    };
+
+    if (!invoiceNumber.trim()) {
+      addError("sale-invoice-number", "Invoice number is required.");
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      addError("sale-date", "Use a valid date.");
+    }
+    if (customerMode === "existing") {
+      if (
+        !resource.data.customers.some((customer) => customer.id === customerId)
+      ) {
+        addError("sale-customer", "Select a valid customer.");
+      }
+    } else {
+      const customerResult = customerSchema.safeParse(newCustomer);
+      if (!customerResult.success) {
+        const customerFields: Record<string, string> = {
+          name: "sale-customer-name",
+          phone: "sale-customer-phone",
+          email: "sale-customer-email",
+          address: "sale-customer-address",
+        };
+        for (const issue of customerResult.error.issues) {
+          const field = issue.path[0];
+          if (typeof field === "string" && customerFields[field]) {
+            addError(customerFields[field], issue.message);
+          }
+        }
+      }
+    }
+
+    const discountValue = discount === "" ? 0 : discount;
+    const vatValue = vat === "" ? 0 : vat;
+    if (!Number.isFinite(discountValue) || discountValue < 0) {
+      addError("sale-discount", "Discount cannot be negative.");
+    }
+    if (!Number.isFinite(vatValue) || vatValue < 0) {
+      addError("sale-vat", "VAT cannot be negative.");
+    }
+
+    const parsedItems: SaleInput["items"] = [];
+    const imeiFields = new Map<string, string>();
+    const requestedByProduct = new Map<
+      string,
+      { quantity: number; quantityFieldId: string }
+    >();
     for (let index = 0; index < items.length; index += 1) {
       const item = items[index];
+      const productFieldId = `sale-item-${item.key}-product`;
+      const quantityFieldId = `sale-item-${item.key}-quantity`;
+      const unitPriceFieldId = `sale-item-${item.key}-unit-price`;
+      const imeisFieldId = `sale-item-${item.key}-imeis`;
       const product = resource.data.products.find(
         (entry) => entry.id === item.productId,
       );
       if (!product) {
-        setFormError(`Select a product for item ${index + 1}.`);
-        return;
+        addError(productFieldId, `Select a product for item ${index + 1}.`);
       }
-      if (
-        typeof item.unitPrice !== "number" ||
-        !Number.isFinite(item.unitPrice) ||
-        item.unitPrice <= 0
-      ) {
-        setFormError(`Enter a valid unit price for item ${index + 1}.`);
-        return;
+      const quantityValue =
+        typeof item.quantity === "number" ? item.quantity : Number.NaN;
+      const validQuantity =
+        Number.isFinite(quantityValue) &&
+        Number.isInteger(quantityValue) &&
+        quantityValue > 0;
+      if (!validQuantity) {
+        addError(
+          quantityFieldId,
+          `Enter a positive whole-number quantity for item ${index + 1}.`,
+        );
+      }
+      const unitPriceValue =
+        typeof item.unitPrice === "number" ? item.unitPrice : Number.NaN;
+      const validUnitPrice =
+        Number.isFinite(unitPriceValue) && unitPriceValue > 0;
+      if (!validUnitPrice) {
+        addError(
+          unitPriceFieldId,
+          `Enter a valid unit price for item ${index + 1}.`,
+        );
       }
       const imeis = parseImeis(item.imeisText);
       if (
-        product.trackingType === "SERIALIZED" &&
-        imeis.length !== item.quantity
+        product?.trackingType === "SERIALIZED" &&
+        validQuantity &&
+        imeis.length !== quantityValue
       ) {
-        setFormError(
-          `Item ${index + 1} needs exactly ${item.quantity} IMEI number${item.quantity === 1 ? "" : "s"}.`,
+        addError(
+          imeisFieldId,
+          `Item ${index + 1} needs exactly ${quantityValue} IMEI number${quantityValue === 1 ? "" : "s"}.`,
         );
-        return;
       }
-      allImeis.push(...imeis);
+      for (const imei of imeis) {
+        const earlierField = imeiFields.get(imei);
+        if (earlierField) {
+          addError(earlierField, "Every IMEI in the sale must be unique.");
+          addError(imeisFieldId, `IMEI ${imei} is duplicated in this sale.`);
+        } else {
+          imeiFields.set(imei, imeisFieldId);
+        }
+      }
+
+      if (product && validQuantity) {
+        const existing = requestedByProduct.get(product.id);
+        requestedByProduct.set(product.id, {
+          quantity: (existing?.quantity ?? 0) + quantityValue,
+          quantityFieldId: existing?.quantityFieldId ?? quantityFieldId,
+        });
+      }
+      parsedItems.push({
+        productId: item.productId,
+        quantity: quantityValue,
+        unitPrice: unitPriceValue,
+        ...(product?.trackingType === "SERIALIZED" ? { imeis } : {}),
+      });
     }
-    if (new Set(allImeis).size !== allImeis.length) {
-      setFormError("Every IMEI in the sale must be unique.");
-      return;
-    }
-    const requestedByProduct = new Map<string, number>();
-    for (const item of parsedItems) {
-      requestedByProduct.set(
-        item.productId,
-        (requestedByProduct.get(item.productId) ?? 0) + item.quantity,
-      );
-    }
-    for (const [productId, requested] of requestedByProduct) {
+    for (const [productId, request] of requestedByProduct) {
       const product = resource.data.products.find(
         (entry) => entry.id === productId,
       );
       if (!product?.isActive) {
-        setFormError(`${product?.name ?? "The selected product"} is inactive.`);
-        return;
+        addError(
+          request.quantityFieldId,
+          `${product?.name ?? "The selected product"} is inactive.`,
+        );
       }
-      if (product.quantity <= 0) {
-        setFormError(`${product.name} is out of stock.`);
-        return;
+      if (product && product.quantity <= 0) {
+        addError(request.quantityFieldId, `${product.name} is out of stock.`);
       }
-      if (requested > product.quantity) {
-        setFormError(
+      if (product && request.quantity > product.quantity) {
+        addError(
+          request.quantityFieldId,
           `Only ${product.quantity} units of ${product.name} are available.`,
         );
-        return;
       }
     }
+
+    const subtotalValue = parsedItems.reduce(
+      (sum, item) =>
+        Number.isFinite(item.quantity) && Number.isFinite(item.unitPrice)
+          ? sum + item.quantity * item.unitPrice
+          : sum,
+      0,
+    );
+    if (subtotalValue - discountValue + vatValue < 0) {
+      addError("sale-discount", "The final total cannot be negative.");
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      focusFirstInvalidField(errors);
+      return;
+    }
+
     const basePayload = {
-      invoiceNumber,
+      invoiceNumber: invoiceNumber.trim(),
       date,
-      discount,
-      vat,
+      discount: discountValue,
+      vat: vatValue,
       items: parsedItems,
     };
     const payload: SaleInput =
@@ -320,9 +430,40 @@ export function SalesPage() {
           };
     const parsed = saleSchema.safeParse(payload);
     if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message ?? "Check the sale fields.");
+      const schemaErrors: SaleFieldErrors = {};
+      for (const issue of parsed.error.issues) {
+        const [section, index, field] = issue.path;
+        let fieldId: string | undefined;
+        if (section === "invoiceNumber") fieldId = "sale-invoice-number";
+        if (section === "date") fieldId = "sale-date";
+        if (section === "discount") fieldId = "sale-discount";
+        if (section === "vat") fieldId = "sale-vat";
+        if (section === "customerId") fieldId = "sale-customer";
+        if (section === "newCustomer" && typeof index === "string") {
+          fieldId = `sale-customer-${index}`;
+        }
+        if (
+          section === "items" &&
+          typeof index === "number" &&
+          items[index] &&
+          typeof field === "string"
+        ) {
+          const suffix = field === "unitPrice" ? "unit-price" : field;
+          fieldId = `sale-item-${items[index].key}-${suffix}`;
+        }
+        if (fieldId) schemaErrors[fieldId] ??= issue.message;
+      }
+      if (Object.keys(schemaErrors).length > 0) {
+        setFieldErrors(schemaErrors);
+        focusFirstInvalidField(schemaErrors);
+      } else {
+        setFormError(
+          parsed.error.issues[0]?.message ?? "Check the sale fields.",
+        );
+      }
       return;
     }
+    setFieldErrors({});
     setCreating(true);
     try {
       for (const item of parsed.data.items)
@@ -390,12 +531,7 @@ export function SalesPage() {
     }
   }
   async function addPayment(values: PaymentFormValues) {
-    if (
-      !paymentSale ||
-      paymentLoading ||
-      paymentError ||
-      paymentSubmitLocked
-    )
+    if (!paymentSale || paymentLoading || paymentError || paymentSubmitLocked)
       return;
     const due = currentSaleDue(paymentSale);
     if (values.amount > due) {
@@ -432,10 +568,13 @@ export function SalesPage() {
   const subtotal = items.reduce(
     (sum, item) =>
       sum +
-      item.quantity * (typeof item.unitPrice === "number" ? item.unitPrice : 0),
+      (typeof item.quantity === "number" ? item.quantity : 0) *
+        (typeof item.unitPrice === "number" ? item.unitPrice : 0),
     0,
   );
-  const finalTotal = subtotal - discount + vat;
+  const discountValue = typeof discount === "number" ? discount : 0;
+  const vatValue = typeof vat === "number" ? vat : 0;
+  const finalTotal = subtotal - discountValue + vatValue;
 
   return (
     <div>
@@ -579,38 +718,62 @@ export function SalesPage() {
           </>
         }
       >
-        <form id="sale-form" onSubmit={createSale} className="space-y-5">
+        <form
+          id="sale-form"
+          onSubmit={createSale}
+          className="space-y-5"
+          noValidate
+        >
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Invoice number">
+            <Field
+              label="Invoice number"
+              error={fieldErrors["sale-invoice-number"]}
+            >
               <Input
+                id="sale-invoice-number"
+                aria-invalid={Boolean(fieldErrors["sale-invoice-number"])}
                 value={invoiceNumber}
-                onChange={(event) => setInvoiceNumber(event.target.value)}
+                onChange={(event) => {
+                  clearFieldError("sale-invoice-number");
+                  setInvoiceNumber(event.target.value);
+                }}
               />
             </Field>
             <Field label="Customer option">
               <Select
                 value={customerMode}
-                onChange={(event) =>
-                  setCustomerMode(event.target.value as "existing" | "new")
-                }
+                onChange={(event) => {
+                  setFieldErrors({});
+                  setCustomerMode(event.target.value as "existing" | "new");
+                }}
               >
                 <option value="existing">Existing customer</option>
                 <option value="new">New customer</option>
               </Select>
             </Field>
-            <Field label="Sale date">
+            <Field label="Sale date" error={fieldErrors["sale-date"]}>
               <Input
+                id="sale-date"
+                aria-invalid={Boolean(fieldErrors["sale-date"])}
                 value={date}
-                onChange={(event) => setDate(event.target.value)}
+                onChange={(event) => {
+                  clearFieldError("sale-date");
+                  setDate(event.target.value);
+                }}
                 type="date"
               />
             </Field>
           </div>
           {customerMode === "existing" ? (
-            <Field label="Customer">
+            <Field label="Customer" error={fieldErrors["sale-customer"]}>
               <Select
+                id="sale-customer"
+                aria-invalid={Boolean(fieldErrors["sale-customer"])}
                 value={customerId}
-                onChange={(event) => setCustomerId(event.target.value)}
+                onChange={(event) => {
+                  clearFieldError("sale-customer");
+                  setCustomerId(event.target.value);
+                }}
               >
                 <option value="">Select customer</option>
                 {resource.data.customers.map((customer) => (
@@ -622,51 +785,67 @@ export function SalesPage() {
             </Field>
           ) : (
             <div className="grid gap-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4 sm:grid-cols-2">
-              <Field label="Name">
+              <Field label="Name" error={fieldErrors["sale-customer-name"]}>
                 <Input
+                  id="sale-customer-name"
+                  aria-invalid={Boolean(fieldErrors["sale-customer-name"])}
                   value={newCustomer.name}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    clearFieldError("sale-customer-name");
                     setNewCustomer((current) => ({
                       ...current,
                       name: event.target.value,
-                    }))
-                  }
-                  required
+                    }));
+                  }}
                 />
               </Field>
-              <Field label="Phone">
+              <Field label="Phone" error={fieldErrors["sale-customer-phone"]}>
                 <Input
+                  id="sale-customer-phone"
+                  aria-invalid={Boolean(fieldErrors["sale-customer-phone"])}
                   value={newCustomer.phone}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    clearFieldError("sale-customer-phone");
                     setNewCustomer((current) => ({
                       ...current,
                       phone: event.target.value,
-                    }))
-                  }
-                  required
+                    }));
+                  }}
                 />
               </Field>
-              <Field label="Email (optional)">
+              <Field
+                label="Email (optional)"
+                error={fieldErrors["sale-customer-email"]}
+              >
                 <Input
+                  id="sale-customer-email"
+                  aria-invalid={Boolean(fieldErrors["sale-customer-email"])}
                   value={newCustomer.email}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    clearFieldError("sale-customer-email");
                     setNewCustomer((current) => ({
                       ...current,
                       email: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   type="email"
                 />
               </Field>
-              <Field label="Address (optional)">
+              <Field
+                label="Address (optional)"
+                error={fieldErrors["sale-customer-address"]}
+              >
                 <Input
+                  id="sale-customer-address"
+                  aria-invalid={Boolean(fieldErrors["sale-customer-address"])}
                   value={newCustomer.address}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    clearFieldError("sale-customer-address");
                     setNewCustomer((current) => ({
                       ...current,
                       address: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                 />
               </Field>
             </div>
@@ -676,26 +855,40 @@ export function SalesPage() {
             items={items}
             onChange={setItems}
             enforceAvailableStock
+            fieldErrors={fieldErrors}
+            onClearFieldError={clearFieldError}
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Discount">
+            <Field label="Discount" error={fieldErrors["sale-discount"]}>
               <Input
+                id="sale-discount"
+                aria-invalid={Boolean(fieldErrors["sale-discount"])}
                 value={discount}
-                onChange={(event) =>
-                  setDiscount(Number(event.target.value) || 0)
-                }
-                type="number"
-                min=""
-                step="1"
-              />
-            </Field>
-            <Field label="VAT">
-              <Input
-                value={vat}
-                onChange={(event) => setVat(Number(event.target.value) || 0)}
+                onChange={(event) => {
+                  clearFieldError("sale-discount");
+                  setDiscount(
+                    event.target.value === "" ? "" : Number(event.target.value),
+                  );
+                }}
                 type="number"
                 min="0"
-                step="1"
+                step="0.01"
+              />
+            </Field>
+            <Field label="VAT" error={fieldErrors["sale-vat"]}>
+              <Input
+                id="sale-vat"
+                aria-invalid={Boolean(fieldErrors["sale-vat"])}
+                value={vat}
+                onChange={(event) => {
+                  clearFieldError("sale-vat");
+                  setVat(
+                    event.target.value === "" ? "" : Number(event.target.value),
+                  );
+                }}
+                type="number"
+                min="0"
+                step="0.01"
               />
             </Field>
           </div>
@@ -711,11 +904,11 @@ export function SalesPage() {
             </div>
             <div>
               <p className="text-xs text-slate-400">Discount</p>
-              <p className="mt-1 font-bold">-{formatMoney(discount)}</p>
+              <p className="mt-1 font-bold">-{formatMoney(discountValue)}</p>
             </div>
             <div>
               <p className="text-xs text-slate-400">VAT</p>
-              <p className="mt-1 font-bold">+{formatMoney(vat)}</p>
+              <p className="mt-1 font-bold">+{formatMoney(vatValue)}</p>
             </div>
             <div>
               <p className="text-xs text-slate-400">Total</p>
@@ -906,10 +1099,7 @@ export function SalesPage() {
                   });
                   paymentForm.setValue(
                     "accountId",
-                    compatiblePaymentAccountId(
-                      compatible,
-                      currentAccountId,
-                    ),
+                    compatiblePaymentAccountId(compatible, currentAccountId),
                     { shouldValidate: true },
                   );
                 }}

@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const products_entity_1 = require("../products/entities/products.entity");
+const sale_item_entity_1 = require("../sales/entities/sale-item.entity");
 const inventory_units_entity_1 = require("./entities/inventory-units.entity");
 let InventoryService = class InventoryService {
     inventoryRepository;
@@ -272,14 +273,27 @@ let InventoryService = class InventoryService {
         await productRepository.save(changedProducts);
     }
     async checkStock() {
-        const units = await this.inventoryRepository.find();
+        const [units, soldSummary] = await Promise.all([
+            this.inventoryRepository.find(),
+            this.inventoryRepository.manager
+                .createQueryBuilder(sale_item_entity_1.SaleItem, 'item')
+                .innerJoin('item.sale', 'sale')
+                .select(`COALESCE(SUM(CASE
+            WHEN item.imeis IS NOT NULL THEN jsonb_array_length(item.imeis)
+            ELSE item.quantity
+          END), 0)`, 'soldUnits')
+                .where('sale.status::text NOT IN (:...excludedSaleStatuses)', {
+                excludedSaleStatuses: ['RETURNED', 'CANCELLED', 'FAILED'],
+            })
+                .andWhere('item.quantity > 0')
+                .getRawOne(),
+        ]);
         return {
             serializedInStock: units.filter((unit) => unit.imei && unit.status === inventory_units_entity_1.InventoryStatus.IN_STOCK).length,
             quantityInStock: units
                 .filter((unit) => !unit.imei && unit.status === inventory_units_entity_1.InventoryStatus.IN_STOCK)
                 .reduce((total, unit) => total + unit.quantity, 0),
-            soldUnits: units.filter((unit) => unit.status === inventory_units_entity_1.InventoryStatus.SOLD)
-                .length,
+            soldUnits: Number(soldSummary?.soldUnits ?? 0),
             damagedUnits: units.filter((unit) => unit.status === inventory_units_entity_1.InventoryStatus.DAMAGED).length,
         };
     }

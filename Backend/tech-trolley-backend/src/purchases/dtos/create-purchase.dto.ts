@@ -11,6 +11,7 @@ import {
   IsUUID,
   Min,
   IsPositive,
+  Matches,
   Validate,
   ValidateIf,
   ValidateNested,
@@ -41,20 +42,23 @@ class ExactlyOneSupplierSelection implements ValidatorConstraintInterface {
 
 export class NewPurchaseProductDto {
   @ApiProperty({ example: 'Samsung Galaxy S25' })
-  @IsString()
-  @IsNotEmpty()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString({ message: 'Product name is required.' })
+  @IsNotEmpty({ message: 'Product name is required.' })
   name: string;
 
   @ApiProperty({ example: 'brand-uuid' })
-  @IsUUID()
+  @IsUUID('4', { message: 'Select a valid brand.' })
   brandId: string;
 
   @ApiProperty({ example: 'category-uuid' })
-  @IsUUID()
+  @IsUUID('4', { message: 'Select a valid category.' })
   categoryId: string;
 
   @ApiProperty({ enum: TrackingType })
-  @IsEnum(TrackingType)
+  @IsEnum(TrackingType, { message: 'Select a valid tracking type.' })
   trackingType: TrackingType;
 
   @ApiProperty({ example: true })
@@ -80,7 +84,7 @@ export class PurchaseItemDto {
     value === '' ? undefined : value,
   )
   @ValidateIf((dto: PurchaseItemDto) => dto.productId !== undefined)
-  @IsUUID()
+  @IsUUID('4', { message: 'Select a valid product.' })
   productId?: string;
 
   @ApiPropertyOptional({ type: NewPurchaseProductDto })
@@ -94,17 +98,27 @@ export class PurchaseItemDto {
   private readonly productSelection?: never;
 
   @ApiProperty({ example: 10 })
-  @IsInt()
-  @Min(1)
+  @IsInt({ message: 'Quantity must be a whole number.' })
+  @Min(1, { message: 'Quantity must be at least 1.' })
   quantity: number;
 
   @ApiProperty({ example: 85000 })
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'Unit price must be a valid number with at most 2 decimals.' },
+  )
+  @IsPositive({ message: 'Unit price must be greater than 0.' })
   unitPrice: number;
 
   @ApiPropertyOptional({ example: ['IMEI12345', 'IMEI67890'] })
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    Array.isArray(value)
+      ? value.map((imei: unknown) =>
+          typeof imei === 'string' ? imei.trim() : imei,
+        )
+      : value,
+  )
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
@@ -113,13 +127,16 @@ export class PurchaseItemDto {
 
 export class CreatePurchaseDto {
   @ApiProperty({ example: 'INV-2023-001' })
-  @IsString()
-  @IsNotEmpty()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString({ message: 'Invoice number is required.' })
+  @IsNotEmpty({ message: 'Invoice number is required.' })
   invoiceNumber: string;
 
   @ApiPropertyOptional({ example: 'supplier-uuid' })
   @ValidateIf((dto: CreatePurchaseDto) => dto.supplierId !== undefined)
-  @IsUUID()
+  @IsUUID('4', { message: 'Select a valid supplier.' })
   supplierId?: string;
 
   @ApiPropertyOptional({ type: CreateSupplierDto })
@@ -133,13 +150,14 @@ export class CreatePurchaseDto {
   private readonly supplierSelection?: never;
 
   @ApiProperty({ example: '2023-10-25' })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Use a valid date.' })
+  @IsNotEmpty({ message: 'Use a valid date.' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Use a valid date.' })
   date: string;
 
   @ApiProperty({ type: [PurchaseItemDto] })
-  @IsArray()
-  @ArrayMinSize(1)
+  @IsArray({ message: 'Add at least one item.' })
+  @ArrayMinSize(1, { message: 'Add at least one item.' })
   @ValidateNested({ each: true })
   @Type(() => PurchaseItemDto)
   items: PurchaseItemDto[];

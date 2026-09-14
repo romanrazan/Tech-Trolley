@@ -52,7 +52,12 @@ export function AccountsPage() {
   const [viewing, setViewing] = useState<Account | null>(null);
   const createForm = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
-    defaultValues: { name: "", type: "Cash", accountNumber: "", balance: 0 },
+    defaultValues: {
+      name: "",
+      type: "Cash",
+      accountNumber: "",
+      balance: undefined,
+    },
   });
   const updateForm = useForm<AccountUpdateFormValues>({
     resolver: zodResolver(accountUpdateSchema),
@@ -79,7 +84,12 @@ export function AccountsPage() {
 
   function openCreate() {
     setEditing(null);
-    createForm.reset({ name: "", type: "Cash", accountNumber: "", balance: 0 });
+    createForm.reset({
+      name: "",
+      type: "Cash",
+      accountNumber: "",
+      balance: undefined,
+    });
     setModalOpen(true);
   }
   function openEdit(account: Account) {
@@ -94,7 +104,7 @@ export function AccountsPage() {
   }
   async function create(values: AccountFormValues) {
     try {
-      await accountsService.create(values);
+      await accountsService.create({ ...values, balance: values.balance ?? 0 });
       toast.success("Account created.");
       setModalOpen(false);
       resource.reload();
@@ -304,7 +314,10 @@ export function AccountsPage() {
                 error={createForm.formState.errors.balance?.message}
               >
                 <Input
-                  {...createForm.register("balance", { valueAsNumber: true })}
+                  {...createForm.register("balance", {
+                    setValueAs: (value: string) =>
+                      value === "" ? undefined : Number(value),
+                  })}
                   type="number"
                   step="0.01"
                 />

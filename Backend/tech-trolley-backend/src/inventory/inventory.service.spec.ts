@@ -1,5 +1,6 @@
 import { EntityManager, Repository } from 'typeorm';
 import { Product } from '../products/entities/products.entity';
+import { SaleItem } from '../sales/entities/sale-item.entity';
 import {
   InventoryStatus,
   InventoryUnit,
@@ -31,6 +32,8 @@ describe('InventoryService product quantity', () => {
       unit?: InventoryUnit;
       availableUnits?: InventoryUnit[];
       existingImeis?: InventoryUnit[];
+      inventoryUnits?: InventoryUnit[];
+      soldUnits?: string | number;
     } = {},
   ) {
     const inventoryCreate = jest.fn((input: object) => ({ ...input }));
@@ -43,12 +46,31 @@ describe('InventoryService product quantity', () => {
       setLock: jest.fn().mockReturnThis(),
       getMany,
     };
+    const soldQueryBuilder = {
+      innerJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: jest
+        .fn()
+        .mockResolvedValue({ soldUnits: options.soldUnits ?? 0 }),
+    };
+    const createSoldQueryBuilder = jest.fn(() => soldQueryBuilder);
     const inventoryRepository = {
-      find: jest.fn().mockResolvedValue(options.existingImeis ?? []),
+      find: jest.fn((findOptions?: object) =>
+        Promise.resolve(
+          findOptions
+            ? (options.existingImeis ?? [])
+            : (options.inventoryUnits ?? []),
+        ),
+      ),
       findOne: jest.fn().mockResolvedValue(options.unit),
       create: inventoryCreate,
       save: inventorySave,
       createQueryBuilder: jest.fn(() => queryBuilder),
+      manager: {
+        createQueryBuilder: createSoldQueryBuilder,
+      },
     } as unknown as Repository<InventoryUnit>;
     const productSave = jest.fn((input: object) => Promise.resolve(input));
     const productRepository = {
@@ -61,8 +83,53 @@ describe('InventoryService product quantity', () => {
       inventoryCreate,
       inventorySave,
       productSave,
+      soldQueryBuilder,
+      createSoldQueryBuilder,
     };
   }
+
+  it('counts five quantity-tracked products as exactly five sold units', async () => {
+    const { service } = setup(quantityProduct(), { soldUnits: '5' });
+
+    await expect(service.checkStock()).resolves.toMatchObject({ soldUnits: 5 });
+  });
+
+  it('sums sale item quantities without counting payment or status rows', async () => {
+    const { service, soldQueryBuilder, createSoldQueryBuilder } = setup(
+      quantityProduct(),
+      { soldUnits: '9' },
+    );
+
+    await expect(service.checkStock()).resolves.toMatchObject({ soldUnits: 9 });
+    expect(createSoldQueryBuilder).toHaveBeenCalledWith(SaleItem, 'item');
+    expect(soldQueryBuilder.innerJoin).toHaveBeenCalledTimes(1);
+    expect(soldQueryBuilder.innerJoin).toHaveBeenCalledWith(
+      'item.sale',
+      'sale',
+    );
+    expect(soldQueryBuilder.select).toHaveBeenCalledWith(
+      expect.stringContaining('ELSE item.quantity'),
+      'soldUnits',
+    );
+    expect(soldQueryBuilder.where).toHaveBeenCalledWith(
+      'sale.status::text NOT IN (:...excludedSaleStatuses)',
+      {
+        excludedSaleStatuses: ['RETURNED', 'CANCELLED', 'FAILED'],
+      },
+    );
+  });
+
+  it('counts serialized sales from successfully recorded IMEIs', async () => {
+    const { service, soldQueryBuilder } = setup(serializedProduct(), {
+      soldUnits: '3',
+    });
+
+    await expect(service.checkStock()).resolves.toMatchObject({ soldUnits: 3 });
+    expect(soldQueryBuilder.select).toHaveBeenCalledWith(
+      expect.stringContaining('jsonb_array_length(item.imeis)'),
+      'soldUnits',
+    );
+  });
 
   it('receives serialized inventory and increments product quantity once', async () => {
     const product = serializedProduct(0);

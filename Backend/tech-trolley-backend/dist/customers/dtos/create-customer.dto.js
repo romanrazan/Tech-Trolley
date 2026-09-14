@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateCustomerDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
 class CreateCustomerDto {
     name;
@@ -21,24 +22,38 @@ class CreateCustomerDto {
 exports.CreateCustomerDto = CreateCustomerDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'John Doe' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Customer name is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Customer name is required.' }),
     __metadata("design:type", String)
 ], CreateCustomerDto.prototype, "name", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: '+8801712345678' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Customer phone is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Customer phone is required.' }),
     __metadata("design:type", String)
 ], CreateCustomerDto.prototype, "phone", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 'john@example.com' }),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value !== 'string')
+            return value;
+        const email = value.trim();
+        return email === '' ? undefined : email;
+    }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEmail)(),
+    (0, class_validator_1.IsEmail)({}, { message: 'Enter a valid email address.' }),
     __metadata("design:type", String)
 ], CreateCustomerDto.prototype, "email", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 'Banani, Dhaka' }),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value !== 'string')
+            return value;
+        const address = value.trim();
+        return address === '' ? undefined : address;
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)

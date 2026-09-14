@@ -89,7 +89,7 @@ describe('CreatePurchaseDto product items', () => {
     });
 
     const errors = await validate(dto);
-    expect(JSON.stringify(errors)).toContain('productId must be a UUID');
+    expect(JSON.stringify(errors)).toContain('Select a valid product.');
   });
 
   it.each([{}, { productId, newProduct }])(

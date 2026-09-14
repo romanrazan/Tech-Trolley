@@ -35,6 +35,35 @@ describe('CreateSaleDto customer selection', () => {
     await expect(validate(dto)).resolves.toHaveLength(0);
   });
 
+  it('treats a blank optional customer email as omitted', async () => {
+    const dto = plainToInstance(CreateSaleDto, {
+      ...saleInput(),
+      newCustomer: {
+        name: 'New Customer',
+        phone: '01700000000',
+        email: '   ',
+      },
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.newCustomer?.email).toBeUndefined();
+  });
+
+  it('rejects an invalid optional customer email when provided', async () => {
+    const dto = plainToInstance(CreateSaleDto, {
+      ...saleInput(),
+      newCustomer: {
+        name: 'New Customer',
+        phone: '01700000000',
+        email: 'not-an-email',
+      },
+    });
+
+    const errors = await validate(dto);
+
+    expect(JSON.stringify(errors)).toContain('Enter a valid email address.');
+  });
+
   it.each([
     { label: 'neither customer option', selection: {} },
     {

@@ -117,6 +117,18 @@ function purchaseStatusTone(status: Purchase["status"]) {
   return "danger" as const;
 }
 
+type PurchaseFieldErrors = Record<string, string>;
+
+function focusFirstInvalidField(errors: PurchaseFieldErrors) {
+  const firstFieldId = Object.keys(errors)[0];
+  if (!firstFieldId) return;
+  requestAnimationFrame(() => {
+    const field = document.getElementById(firstFieldId);
+    field?.scrollIntoView({ behavior: "smooth", block: "center" });
+    field?.focus({ preventScroll: true });
+  });
+}
+
 export function PurchasesPage() {
   const resource = useApiData<PurchaseData>(
     async () => {
@@ -166,6 +178,7 @@ export function PurchasesPage() {
   const [items, setItems] = useState<DraftPurchaseItem[]>([
     createDraftPurchaseItem("item-1"),
   ]);
+  const [fieldErrors, setFieldErrors] = useState<PurchaseFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<PurchaseDetail | null>(null);
@@ -244,60 +257,107 @@ export function PurchasesPage() {
     setDate(today());
     setRemarks("");
     setItems([createDraftPurchaseItem()]);
+    setFieldErrors({});
     setFormError(null);
   }
   function openCreate() {
     resetCreate();
     setCreateOpen(true);
   }
+  function clearFieldError(fieldId: string) {
+    setFieldErrors((current) => {
+      if (!current[fieldId]) return current;
+      const next = { ...current };
+      delete next[fieldId];
+      return next;
+    });
+  }
   async function createPurchase(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
+    const errors: PurchaseFieldErrors = {};
+    const addError = (fieldId: string, message: string) => {
+      errors[fieldId] ??= message;
+    };
 
-    if (!supplierReady) {
-      setFormError(
-        supplierMode === "existing"
-          ? "Select an active Supplier before completing Product items."
-          : "Complete all required new Supplier details before completing Product items.",
+    if (!invoiceNumber.trim()) {
+      addError("purchase-invoice-number", "Invoice number is required.");
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      addError("purchase-date", "Use a valid date.");
+    }
+    if (supplierMode === "existing") {
+      const supplier = resource.data.suppliers.find(
+        (entry) => entry.id === supplierId,
       );
-      return;
+      if (!supplier || !supplier.isActive || supplier.deletedAt) {
+        addError("purchase-supplier", "Select an active supplier.");
+      }
+    } else {
+      const supplierResult = supplierSchema.safeParse(newSupplier);
+      if (!supplierResult.success) {
+        const supplierFields: Record<string, string> = {
+          name: "purchase-supplier-name",
+          phone: "purchase-supplier-phone",
+          email: "purchase-supplier-email",
+          address: "purchase-supplier-address",
+        };
+        for (const issue of supplierResult.error.issues) {
+          const field = issue.path[0];
+          if (typeof field === "string" && supplierFields[field]) {
+            addError(supplierFields[field], issue.message);
+          }
+        }
+      }
     }
 
     const parsedItems: PurchaseItemInput[] = [];
     const existingProductIds = new Set<string>();
     const newProductNames = new Set<string>();
-    const purchaseImeis = new Set<string>();
+    const purchaseImeis = new Map<string, string>();
 
     for (let index = 0; index < items.length; index += 1) {
       const item = items[index];
+      const productFieldId = `purchase-item-${item.key}-product`;
+      const nameFieldId = `purchase-item-${item.key}-name`;
+      const brandFieldId = `purchase-item-${item.key}-brand`;
+      const categoryFieldId = `purchase-item-${item.key}-category`;
+      const trackingFieldId = `purchase-item-${item.key}-tracking`;
+      const quantityFieldId = `purchase-item-${item.key}-quantity`;
+      const unitPriceFieldId = `purchase-item-${item.key}-unit-price`;
+      const imeisFieldId = `purchase-item-${item.key}-imeis`;
       let validatedNewProduct: PurchaseItemInput["newProduct"];
-      if (
-        typeof item.quantity !== "number" ||
-        !Number.isFinite(item.quantity) ||
-        !Number.isInteger(item.quantity) ||
-        item.quantity <= 0
-      ) {
-        setFormError(
+      const quantityValue =
+        typeof item.quantity === "number" ? item.quantity : Number.NaN;
+      const validQuantity =
+        Number.isFinite(quantityValue) &&
+        Number.isInteger(quantityValue) &&
+        quantityValue > 0;
+      if (!validQuantity) {
+        addError(
+          quantityFieldId,
           `Enter a positive whole-number quantity for item ${index + 1}.`,
         );
-        return;
+      }
+      const unitPriceValue =
+        typeof item.unitPrice === "number" ? item.unitPrice : Number.NaN;
+      const validUnitPrice =
+        Number.isFinite(unitPriceValue) && unitPriceValue > 0;
+      if (!validUnitPrice) {
+        addError(
+          unitPriceFieldId,
+          `Enter a valid unit price for item ${index + 1}.`,
+        );
       }
       if (
-        typeof item.unitPrice !== "number" ||
-        !Number.isFinite(item.unitPrice) ||
-        item.unitPrice <= 0
+        validUnitPrice &&
+        Math.abs(unitPriceValue * 100 - Math.round(unitPriceValue * 100)) >=
+          1e-8
       ) {
-        setFormError(`Enter a valid unit price for item ${index + 1}.`);
-        return;
-      }
-      if (
-        Math.abs(item.unitPrice * 100 - Math.round(item.unitPrice * 100)) >=
-        1e-8
-      ) {
-        setFormError(
+        addError(
+          unitPriceFieldId,
           `Unit price for item ${index + 1} cannot have more than 2 decimal places.`,
         );
-        return;
       }
 
       let product = resource.data.products.find(
@@ -306,89 +366,117 @@ export function PurchasesPage() {
       );
       if (item.mode === "existing") {
         if (!product) {
-          setFormError(`Select an active Product for item ${index + 1}.`);
-          return;
-        }
-        if (existingProductIds.has(product.id)) {
-          setFormError(
-            `${product.name} is already included. Use one line per existing Product.`,
+          addError(
+            productFieldId,
+            `Select an active product for item ${index + 1}.`,
           );
-          return;
+        } else {
+          if (existingProductIds.has(product.id)) {
+            addError(
+              productFieldId,
+              `${product.name} is already included. Use one line per existing product.`,
+            );
+          }
+          existingProductIds.add(product.id);
         }
-        existingProductIds.add(product.id);
       } else {
         const parsedProduct = newPurchaseProductSchema.safeParse(
           item.newProduct,
         );
         if (!parsedProduct.success) {
-          setFormError(
-            `Item ${index + 1}: ${parsedProduct.error.issues[0]?.message ?? "Check the new Product details."}`,
-          );
-          return;
+          const newProductFields: Record<string, string> = {
+            name: nameFieldId,
+            brandId: brandFieldId,
+            categoryId: categoryFieldId,
+            trackingType: trackingFieldId,
+          };
+          for (const issue of parsedProduct.error.issues) {
+            const field = issue.path[0];
+            if (typeof field === "string" && newProductFields[field]) {
+              addError(newProductFields[field], issue.message);
+            }
+          }
+        } else {
+          const normalizedName = parsedProduct.data.name.toLocaleLowerCase();
+          if (newProductNames.has(normalizedName)) {
+            addError(
+              nameFieldId,
+              `The new product ${parsedProduct.data.name} is listed more than once.`,
+            );
+          }
+          if (
+            resource.data.products.some(
+              (entry) =>
+                entry.name.trim().toLocaleLowerCase() === normalizedName,
+            )
+          ) {
+            addError(
+              nameFieldId,
+              `${parsedProduct.data.name} already exists. Select it as an existing product.`,
+            );
+          }
+          newProductNames.add(normalizedName);
+          validatedNewProduct = parsedProduct.data;
+          product = {
+            ...parsedProduct.data,
+            id: "",
+            quantity: 0,
+          };
         }
-        const normalizedName = parsedProduct.data.name.toLocaleLowerCase();
-        if (newProductNames.has(normalizedName)) {
-          setFormError(
-            `The new Product ${parsedProduct.data.name} is listed more than once.`,
-          );
-          return;
-        }
-        if (
-          resource.data.products.some(
-            (entry) => entry.name.trim().toLocaleLowerCase() === normalizedName,
-          )
-        ) {
-          setFormError(
-            `${parsedProduct.data.name} already exists. Select it as an Existing Product.`,
-          );
-          return;
-        }
-        newProductNames.add(normalizedName);
-        validatedNewProduct = parsedProduct.data;
-        product = {
-          ...parsedProduct.data,
-          id: "",
-          quantity: 0,
-        };
       }
 
       const imeis = parseImeis(item.imeisText);
       if (
-        product.trackingType === "SERIALIZED" &&
-        imeis.length !== item.quantity
+        product?.trackingType === "SERIALIZED" &&
+        validQuantity &&
+        imeis.length !== quantityValue
       ) {
-        setFormError(
-          `Item ${index + 1} needs exactly ${item.quantity} IMEI number${item.quantity === 1 ? "" : "s"}.`,
+        addError(
+          imeisFieldId,
+          `Item ${index + 1} needs exactly ${quantityValue} IMEI number${quantityValue === 1 ? "" : "s"}.`,
         );
-        return;
       }
-      if (product.trackingType === "QUANTITY" && imeis.length) {
-        setFormError(
+      if (product?.trackingType === "QUANTITY" && imeis.length) {
+        addError(
+          imeisFieldId,
           `Item ${index + 1} is quantity tracked and cannot contain IMEIs.`,
         );
-        return;
       }
       for (const imei of imeis) {
-        if (purchaseImeis.has(imei)) {
-          setFormError(`IMEI ${imei} is duplicated in this Purchase.`);
-          return;
+        const earlierField = purchaseImeis.get(imei);
+        if (earlierField) {
+          addError(earlierField, "Every IMEI in the purchase must be unique.");
+          addError(
+            imeisFieldId,
+            `IMEI ${imei} is duplicated in this purchase.`,
+          );
+        } else {
+          purchaseImeis.set(imei, imeisFieldId);
         }
-        purchaseImeis.add(imei);
       }
 
       const itemBase = {
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        ...(product.trackingType === "SERIALIZED" ? { imeis } : {}),
+        quantity: quantityValue,
+        unitPrice: unitPriceValue,
+        ...(product?.trackingType === "SERIALIZED" ? { imeis } : {}),
       };
-      parsedItems.push(
-        item.mode === "existing"
-          ? { ...itemBase, productId: product.id }
-          : { ...itemBase, newProduct: validatedNewProduct! },
-      );
+      if (item.mode === "existing") {
+        parsedItems.push({ ...itemBase, productId: product?.id ?? "" });
+      } else {
+        parsedItems.push({
+          ...itemBase,
+          newProduct: validatedNewProduct ?? item.newProduct,
+        });
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      focusFirstInvalidField(errors);
+      return;
     }
     const basePayload = {
-      invoiceNumber,
+      invoiceNumber: invoiceNumber.trim(),
       date,
       items: parsedItems,
       remarks: remarks || undefined,
@@ -404,6 +492,7 @@ export function PurchasesPage() {
       );
       return;
     }
+    setFieldErrors({});
     setCreating(true);
     try {
       await purchasesService.create(parsed.data);
@@ -612,22 +701,41 @@ export function PurchasesPage() {
             id="purchase-form"
             onSubmit={createPurchase}
             className="space-y-5"
+            noValidate
           >
             <section className="rounded-xl border border-slate-200 p-4">
               <h3 className="mb-3 font-bold text-slate-900">
                 Purchase information
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Invoice number">
+                <Field
+                  label="Invoice number"
+                  error={fieldErrors["purchase-invoice-number"]}
+                >
                   <Input
+                    id="purchase-invoice-number"
+                    aria-invalid={Boolean(
+                      fieldErrors["purchase-invoice-number"],
+                    )}
                     value={invoiceNumber}
-                    onChange={(event) => setInvoiceNumber(event.target.value)}
+                    onChange={(event) => {
+                      clearFieldError("purchase-invoice-number");
+                      setInvoiceNumber(event.target.value);
+                    }}
                   />
                 </Field>
-                <Field label="Purchase date">
+                <Field
+                  label="Purchase date"
+                  error={fieldErrors["purchase-date"]}
+                >
                   <Input
+                    id="purchase-date"
+                    aria-invalid={Boolean(fieldErrors["purchase-date"])}
                     value={date}
-                    onChange={(event) => setDate(event.target.value)}
+                    onChange={(event) => {
+                      clearFieldError("purchase-date");
+                      setDate(event.target.value);
+                    }}
                     type="date"
                   />
                 </Field>
@@ -653,6 +761,7 @@ export function PurchasesPage() {
                         address: "",
                       });
                       setItems([createDraftPurchaseItem()]);
+                      setFieldErrors({});
                     }}
                   >
                     <option value="existing">Existing Supplier</option>
@@ -660,10 +769,18 @@ export function PurchasesPage() {
                   </Select>
                 </Field>
                 {supplierMode === "existing" ? (
-                  <Field label="Supplier">
+                  <Field
+                    label="Supplier"
+                    error={fieldErrors["purchase-supplier"]}
+                  >
                     <Select
+                      id="purchase-supplier"
+                      aria-invalid={Boolean(fieldErrors["purchase-supplier"])}
                       value={supplierId}
-                      onChange={(event) => setSupplierId(event.target.value)}
+                      onChange={(event) => {
+                        clearFieldError("purchase-supplier");
+                        setSupplierId(event.target.value);
+                      }}
                     >
                       <option value="">Select Supplier</option>
                       {resource.data.suppliers
@@ -680,53 +797,81 @@ export function PurchasesPage() {
                   </Field>
                 ) : (
                   <div className="grid gap-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4 sm:grid-cols-2">
-                    <Field label="Supplier name">
+                    <Field
+                      label="Supplier name"
+                      error={fieldErrors["purchase-supplier-name"]}
+                    >
                       <Input
+                        id="purchase-supplier-name"
+                        aria-invalid={Boolean(
+                          fieldErrors["purchase-supplier-name"],
+                        )}
                         value={newSupplier.name}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          clearFieldError("purchase-supplier-name");
                           setNewSupplier((current) => ({
                             ...current,
                             name: event.target.value,
-                          }))
-                        }
-                        required
+                          }));
+                        }}
                       />
                     </Field>
-                    <Field label="Phone">
+                    <Field
+                      label="Phone"
+                      error={fieldErrors["purchase-supplier-phone"]}
+                    >
                       <Input
+                        id="purchase-supplier-phone"
+                        aria-invalid={Boolean(
+                          fieldErrors["purchase-supplier-phone"],
+                        )}
                         value={newSupplier.phone}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          clearFieldError("purchase-supplier-phone");
                           setNewSupplier((current) => ({
                             ...current,
                             phone: event.target.value,
-                          }))
-                        }
-                        required
+                          }));
+                        }}
                       />
                     </Field>
-                    <Field label="Email">
+                    <Field
+                      label="Email"
+                      error={fieldErrors["purchase-supplier-email"]}
+                    >
                       <Input
+                        id="purchase-supplier-email"
+                        aria-invalid={Boolean(
+                          fieldErrors["purchase-supplier-email"],
+                        )}
                         value={newSupplier.email}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          clearFieldError("purchase-supplier-email");
                           setNewSupplier((current) => ({
                             ...current,
                             email: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                         type="email"
-                        required
                       />
                     </Field>
-                    <Field label="Address">
+                    <Field
+                      label="Address"
+                      error={fieldErrors["purchase-supplier-address"]}
+                    >
                       <Input
+                        id="purchase-supplier-address"
+                        aria-invalid={Boolean(
+                          fieldErrors["purchase-supplier-address"],
+                        )}
                         value={newSupplier.address}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          clearFieldError("purchase-supplier-address");
                           setNewSupplier((current) => ({
                             ...current,
                             address: event.target.value,
-                          }))
-                        }
-                        required
+                          }));
+                        }}
                       />
                     </Field>
                   </div>
@@ -741,6 +886,8 @@ export function PurchasesPage() {
               items={items}
               onChange={setItems}
               disabled={!supplierReady}
+              fieldErrors={fieldErrors}
+              onClearFieldError={clearFieldError}
             />
             <Field label="Remarks (optional)">
               <Textarea

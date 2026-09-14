@@ -34,24 +34,27 @@ class SaleItemDto {
 }
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'product-uuid' }),
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsUUID)('4', { message: 'Select a valid product.' }),
     __metadata("design:type", String)
 ], SaleItemDto.prototype, "productId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 1 }),
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.IsInt)({ message: 'Quantity must be a whole number.' }),
+    (0, class_validator_1.Min)(1, { message: 'Quantity must be at least 1.' }),
     __metadata("design:type", Number)
 ], SaleItemDto.prototype, "quantity", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 92000 }),
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsPositive)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'Unit price must be a valid number.' }),
+    (0, class_validator_1.IsPositive)({ message: 'Unit price must be positive.' }),
     __metadata("design:type", Number)
 ], SaleItemDto.prototype, "unitPrice", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: ['IMEI12345'] }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => Array.isArray(value)
+        ? value.map((imei) => typeof imei === 'string' ? imei.trim() : imei)
+        : value),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsString)({ each: true }),
     (0, class_validator_1.IsNotEmpty)({ each: true }),
@@ -70,14 +73,15 @@ class CreateSaleDto {
 exports.CreateSaleDto = CreateSaleDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'INV-S-001' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => typeof value === 'string' ? value.trim() : value),
+    (0, class_validator_1.IsString)({ message: 'Invoice number is required.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Invoice number is required.' }),
     __metadata("design:type", String)
 ], CreateSaleDto.prototype, "invoiceNumber", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 'customer-uuid' }),
     (0, class_validator_1.ValidateIf)((dto) => dto.customerId !== undefined),
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsUUID)('4', { message: 'Select a valid customer.' }),
     __metadata("design:type", String)
 ], CreateSaleDto.prototype, "customerId", void 0);
 __decorate([
@@ -94,26 +98,27 @@ __decorate([
 ], CreateSaleDto.prototype, "customerSelection", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: '2023-10-26' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)({ message: 'Use a valid date.' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Use a valid date.' }),
+    (0, class_validator_1.Matches)(/^\d{4}-\d{2}-\d{2}$/, { message: 'Use a valid date.' }),
     __metadata("design:type", String)
 ], CreateSaleDto.prototype, "date", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 0 }),
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsNumber)({}, { message: 'Discount must be a valid number.' }),
+    (0, class_validator_1.Min)(0, { message: 'Discount cannot be negative.' }),
     __metadata("design:type", Number)
 ], CreateSaleDto.prototype, "discount", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 1000 }),
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsNumber)({}, { message: 'VAT must be a valid number.' }),
+    (0, class_validator_1.Min)(0, { message: 'VAT cannot be negative.' }),
     __metadata("design:type", Number)
 ], CreateSaleDto.prototype, "vat", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ type: [SaleItemDto] }),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayMinSize)(1),
+    (0, class_validator_1.IsArray)({ message: 'Add at least one item.' }),
+    (0, class_validator_1.ArrayMinSize)(1, { message: 'Add at least one item.' }),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => SaleItemDto),
     __metadata("design:type", Array)

@@ -51,6 +51,8 @@ export function PurchaseItemsEditor({
   items,
   onChange,
   disabled,
+  fieldErrors = {},
+  onClearFieldError,
 }: {
   products: Product[];
   brands: Brand[];
@@ -58,6 +60,8 @@ export function PurchaseItemsEditor({
   items: DraftPurchaseItem[];
   onChange: (items: DraftPurchaseItem[]) => void;
   disabled: boolean;
+  fieldErrors?: Record<string, string>;
+  onClearFieldError?: (fieldId: string) => void;
 }) {
   const activeProducts = products.filter(
     (product) => product.isActive && !product.deletedAt,
@@ -133,6 +137,14 @@ export function PurchaseItemsEditor({
             typeof item.quantity === "number" ? item.quantity : 0;
           const unitPrice =
             typeof item.unitPrice === "number" ? item.unitPrice : 0;
+          const productFieldId = `purchase-item-${item.key}-product`;
+          const nameFieldId = `purchase-item-${item.key}-name`;
+          const brandFieldId = `purchase-item-${item.key}-brand`;
+          const categoryFieldId = `purchase-item-${item.key}-category`;
+          const trackingFieldId = `purchase-item-${item.key}-tracking`;
+          const quantityFieldId = `purchase-item-${item.key}-quantity`;
+          const unitPriceFieldId = `purchase-item-${item.key}-unit-price`;
+          const imeisFieldId = `purchase-item-${item.key}-imeis`;
 
           return (
             <Card key={item.key} className="p-4">
@@ -170,16 +182,19 @@ export function PurchaseItemsEditor({
                 </Field>
 
                 {item.mode === "existing" ? (
-                  <Field label="Product">
+                  <Field label="Product" error={fieldErrors[productFieldId]}>
                     <Select
+                      id={productFieldId}
+                      aria-invalid={Boolean(fieldErrors[productFieldId])}
                       value={item.productId}
                       disabled={disabled}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        onClearFieldError?.(productFieldId);
                         update(item.key, {
                           productId: event.target.value,
                           imeisText: "",
-                        })
-                      }
+                        });
+                      }}
                     >
                       <option value="">Select Product</option>
                       {activeProducts.map((entry) => (
@@ -190,13 +205,16 @@ export function PurchaseItemsEditor({
                     </Select>
                   </Field>
                 ) : (
-                  <Field label="Product name">
+                  <Field label="Product name" error={fieldErrors[nameFieldId]}>
                     <Input
+                      id={nameFieldId}
+                      aria-invalid={Boolean(fieldErrors[nameFieldId])}
                       value={item.newProduct.name}
                       disabled={disabled}
-                      onChange={(event) =>
-                        updateNewProduct(item, { name: event.target.value })
-                      }
+                      onChange={(event) => {
+                        onClearFieldError?.(nameFieldId);
+                        updateNewProduct(item, { name: event.target.value });
+                      }}
                     />
                   </Field>
                 )}
@@ -238,15 +256,18 @@ export function PurchaseItemsEditor({
 
                 {item.mode === "new" && (
                   <>
-                    <Field label="Brand">
+                    <Field label="Brand" error={fieldErrors[brandFieldId]}>
                       <Select
+                        id={brandFieldId}
+                        aria-invalid={Boolean(fieldErrors[brandFieldId])}
                         value={item.newProduct.brandId}
                         disabled={disabled}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          onClearFieldError?.(brandFieldId);
                           updateNewProduct(item, {
                             brandId: event.target.value,
-                          })
-                        }
+                          });
+                        }}
                       >
                         <option value="">Select Brand</option>
                         {brands
@@ -258,15 +279,21 @@ export function PurchaseItemsEditor({
                           ))}
                       </Select>
                     </Field>
-                    <Field label="Category">
+                    <Field
+                      label="Category"
+                      error={fieldErrors[categoryFieldId]}
+                    >
                       <Select
+                        id={categoryFieldId}
+                        aria-invalid={Boolean(fieldErrors[categoryFieldId])}
                         value={item.newProduct.categoryId}
                         disabled={disabled}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          onClearFieldError?.(categoryFieldId);
                           updateNewProduct(item, {
                             categoryId: event.target.value,
-                          })
-                        }
+                          });
+                        }}
                       >
                         <option value="">Select Category</option>
                         {categories
@@ -278,19 +305,25 @@ export function PurchaseItemsEditor({
                           ))}
                       </Select>
                     </Field>
-                    <Field label="Tracking type">
+                    <Field
+                      label="Tracking type"
+                      error={fieldErrors[trackingFieldId]}
+                    >
                       <Select
+                        id={trackingFieldId}
+                        aria-invalid={Boolean(fieldErrors[trackingFieldId])}
                         value={item.newProduct.trackingType}
                         disabled={disabled}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          onClearFieldError?.(trackingFieldId);
                           update(item.key, {
                             newProduct: {
                               ...item.newProduct,
                               trackingType: event.target.value as TrackingType,
                             },
                             imeisText: "",
-                          })
-                        }
+                          });
+                        }}
                       >
                         <option value="SERIALIZED">Serialized / IMEI</option>
                         <option value="QUANTITY">Quantity tracked</option>
@@ -315,35 +348,44 @@ export function PurchaseItemsEditor({
                   </>
                 )}
 
-                <Field label="Purchase quantity">
+                <Field
+                  label="Purchase quantity"
+                  error={fieldErrors[quantityFieldId]}
+                >
                   <Input
+                    id={quantityFieldId}
+                    aria-invalid={Boolean(fieldErrors[quantityFieldId])}
                     value={item.quantity}
                     disabled={disabled}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      onClearFieldError?.(quantityFieldId);
                       update(item.key, {
                         quantity:
                           event.target.value === ""
                             ? ""
                             : Number(event.target.value),
-                      })
-                    }
+                      });
+                    }}
                     type="number"
                     min="1"
                     step="1"
                   />
                 </Field>
-                <Field label="Unit price">
+                <Field label="Unit price" error={fieldErrors[unitPriceFieldId]}>
                   <Input
+                    id={unitPriceFieldId}
+                    aria-invalid={Boolean(fieldErrors[unitPriceFieldId])}
                     value={item.unitPrice}
                     disabled={disabled}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      onClearFieldError?.(unitPriceFieldId);
                       update(item.key, {
                         unitPrice:
                           event.target.value === ""
                             ? ""
                             : Number(event.target.value),
-                      })
-                    }
+                      });
+                    }}
                     type="number"
                     min="0.01"
                     step="0.01"
@@ -356,13 +398,17 @@ export function PurchaseItemsEditor({
                     <Field
                       label={`IMEIs (${parseImeis(item.imeisText).length}/${quantity})`}
                       hint="Enter exactly one IMEI per unit, one per line or separated by commas."
+                      error={fieldErrors[imeisFieldId]}
                     >
                       <Textarea
+                        id={imeisFieldId}
+                        aria-invalid={Boolean(fieldErrors[imeisFieldId])}
                         value={item.imeisText}
                         disabled={disabled}
-                        onChange={(event) =>
-                          update(item.key, { imeisText: event.target.value })
-                        }
+                        onChange={(event) => {
+                          onClearFieldError?.(imeisFieldId);
+                          update(item.key, { imeisText: event.target.value });
+                        }}
                         rows={3}
                         placeholder="356938035643809"
                       />
